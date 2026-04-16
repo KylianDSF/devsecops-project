@@ -1,0 +1,42 @@
+name: DevSecOps CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  security-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Lint Kubernetes YAML
+        run: yamllint k8s/deployment.yaml
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.31.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+
+      - name: Build Docker image
+        run: docker build -t devsecops-app:latest .
+
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@0.31.0
+        with:
+          image-ref: devsecops-app:latest
+          format: table
